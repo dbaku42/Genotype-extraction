@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# Check if a VCF file is provided
+if [ -z "$1" ]; then
+  echo "Usage: $0 <input.vcf>"
+  exit 1
+fi
+
+VCF_FILE="$1"
+OUTPUT_FILE="${VCF_FILE%.*}.genotypes.matrix.txt"
+
+echo "Extracting genotypes from: $VCF_FILE"
+echo "Output will be saved to: $OUTPUT_FILE"
+
+# Get sample names from the VCF header
+SAMPLE_NAMES=$(bcftools query -l "$VCF_FILE" | tr '\n' '\t')
+
+# Print header row: RSID followed by sample names
+echo -e "RSID\t$SAMPLE_NAMES" > "$OUTPUT_FILE"
+
+# Process the VCF file
+bcftools query -f '%ID[\t%GT]\n' "$VCF_FILE" | \
+awk '
+BEGIN { OFS="\t" }
+{
+    rsid = $1
+    printf "%s", rsid
+
+    # Iterate through each sample genotype (starting from second field)
+    for (i = 2; i <= NF; i++) {
+        gt = $i
+        encoded_gt = "NA"
+
+        if (gt ~ /[0-9][\/|][0-9]/) {
+            split(gt, alleles, "[/|]")
+            
+            if (alleles[1] == 0 && alleles[2] == 0) {
+                encoded_gt = 0
+            } else if ((alleles[1] == 0 && alleles[2] == 1) || (alleles[1] == 1 && alleles[2] == 0)) {
+                encoded_gt = 1
+            } else if (alleles[1] == 1 && alleles[2] == 1) {
+                encoded_gt = 2
+            } else if (alleles[1] > 1 || alleles[2] > 1) {
+                if (gt ~ /[0-9][\/|]0/ || gt ~ /0[\/|][0-9]/) {
+                    encoded_gt = 1
+                } else if (gt ~ /1/) {
+                    encoded_gt = 1
+                } else {
+                    encoded_gt = 2
+                }
+            }
+        } else if (gt == "./." || gt == ".|.") {
+            encoded_gt = "NA"
+        } else {
+            encoded_gt = "NA"
+        }
+        printf "\t%s", encoded_gt
+    }
+    printf "\n"
+}' >> "$OUTPUT_FILE"
+
+echo "Genotype extraction complete. Check $OUTPUT_FILE"
