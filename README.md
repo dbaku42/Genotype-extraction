@@ -16,7 +16,7 @@ bcftools (v1.10 or higher recommended)
 Indexed VCF file (.vcf.gz and .tbi)
 
 # No installation required. Just clone the repository:
-git clone https://github.com/dbaku42/genotype-matrix-extractor.git
+git clone https://github.com/dbaku42/Genotype-extraction/blob/main/genotype-matrix-extractor
 cd genotype-matrix-extractor
 
 # Usage
